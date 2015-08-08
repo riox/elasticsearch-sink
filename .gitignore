@@ -1,3 +1,7 @@
 /build/
 /.gradle/
 /release/xd/
+/.classpath
+/.project
+/.settings/
+

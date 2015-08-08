@@ -71,6 +71,8 @@ public class ElasticSearchSinkOptionMetadata implements ProfileNamesProvider,Val
 
     private volatile SinkMode mode = transport;
 
+    private volatile Boolean guessSchemas;
+
     @NotBlank(groups = HttpValidationGroup.class)
     public String getProtocol() {
         return protocol;
@@ -105,6 +107,14 @@ public class ElasticSearchSinkOptionMetadata implements ProfileNamesProvider,Val
         return idPath;
     }
 
+    public Boolean getGuessSchemas() {
+    	return guessSchemas;
+    }
+    
+    public Boolean isGuessSchemas() {
+    	return guessSchemas;
+    }
+
     @ModuleOption("The ElasticSearch cluster")
     public void setClusterName(String clusterName) {
         this.clusterName = clusterName;
@@ -134,6 +144,11 @@ public class ElasticSearchSinkOptionMetadata implements ProfileNamesProvider,Val
     public void setIdPath(String idPath) {
         this.idPath = idPath;
     }
+
+    @ModuleOption("Whether to automatically guess schema types, e.g., geo_point")
+    public void setGuessSchemas(Boolean guessSchemas) {
+		this.guessSchemas = guessSchemas;
+	}
 
 
     @Override

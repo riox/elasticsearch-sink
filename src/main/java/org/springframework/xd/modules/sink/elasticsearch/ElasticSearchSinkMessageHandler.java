@@ -18,7 +18,9 @@ package org.springframework.xd.modules.sink.elasticsearch;
 
 import java.util.Collection;
 
+import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.client.Client;
 import org.springframework.integration.handler.AbstractMessageHandler;
 import org.springframework.integration.json.JsonPathUtils;
@@ -41,6 +43,9 @@ public class ElasticSearchSinkMessageHandler extends AbstractMessageHandler {
 
     private volatile String idPath;
 
+    private volatile String guessSchemas;
+
+    private IndexSchemaGuesser schemaGuesser;
 
     public void setClient(Client client) {
         this.client = client;
@@ -73,6 +78,14 @@ public class ElasticSearchSinkMessageHandler extends AbstractMessageHandler {
     public void setIdPath(String idPath) {
         this.idPath = idPath;
     }
+    
+    /**
+     * Whether or not to guess schemas.
+     * @param guessSchemas
+     */
+    public void setGuessSchemas(String guessSchemas) {
+		this.guessSchemas = guessSchemas;
+	}
 
     @Override
     protected void handleMessageInternal(Message<?> message) throws Exception {
@@ -92,10 +105,26 @@ public class ElasticSearchSinkMessageHandler extends AbstractMessageHandler {
             }
             // TODO: make the charset configurable
             request.source(((String)message.getPayload()).getBytes());
-            client.index(request);
+            ActionFuture<IndexResponse> future = client.index(request);
+            /* wait until indexed, then re-calc the index*/
+            if(guessSchemas != null && "true".equals(guessSchemas)) {
+            	future.get();
+                checkIndexSchema(request);
+            }
         } else {
             throw new MessageHandlingException(message, "Only String payloads are currently supported");
         }
     }
+
+    /**
+     * check index schema and make adjustments to the schema, if necessary.
+     * @param request
+     */
+	private void checkIndexSchema(IndexRequest request) {
+		if(schemaGuesser == null) {
+			schemaGuesser = new IndexSchemaGuesser(client, index, type);
+		}
+		schemaGuesser.checkIndexSchema(request);
+	}
 
 }

@@ -60,6 +60,7 @@
                 <property name="type" value="${type}"/>
                 <property name="client" ref="elasticSearchClient"/>
                 <property name="idPath" value="${idPath:#{null}}"/>
+                <property name="guessSchemas" value="${guessSchemas}"/>
             </bean>
         </int:outbound-channel-adapter>
     </beans>
