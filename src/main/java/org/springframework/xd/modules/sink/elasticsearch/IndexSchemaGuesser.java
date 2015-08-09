@@ -10,6 +10,8 @@ import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.metadata.MappingMetaData;
 import org.elasticsearch.common.collect.ImmutableOpenMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 
@@ -82,18 +84,15 @@ public class IndexSchemaGuesser {
 		}
 	}
 
+    private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchSinkMessageHandler.class);
 	private Map<SchemaAttribute,SchemaMapping> mappings = new HashMap<SchemaAttribute,SchemaMapping>();
-	//private Client client;
-	//private boolean clientCreatedByUs = false;
-//	private IndicesAdminClient indicesClient;
 	private String index;
 	private String type;
 	private ElasticSearchUtil esUtil;
 
+
 	public IndexSchemaGuesser(Client client, String index, String type) {
-		esUtil = new ElasticSearchUtil(client);
-//		this.client = client;
-//		this.indicesClient = this.client.admin().indices();
+		this.esUtil = new ElasticSearchUtil(client);
 		this.index = index;
 		this.type = type;
 	}
@@ -108,7 +107,7 @@ public class IndexSchemaGuesser {
 
 	@SuppressWarnings("unchecked")
 	private void checkIndexSchema(String prefix, Map<String,Object> source) {
-		for(String key : source.keySet()) {
+        for(String key : source.keySet()) {
 			Object obj = source.get(key);
 			String theKey = prefix + key;
 			processSchemaEntry(theKey, obj);
@@ -123,7 +122,7 @@ public class IndexSchemaGuesser {
 	private void processSchemaEntry(String attributePath, Object value) {
 		SchemaAttribute a = new SchemaAttribute(index, type, attributePath);
 
-		if(mappings.containsKey(a)) {
+        if(mappings.containsKey(a)) {
 			/* custom mapping already present! -> return */
 			return;
 		}
@@ -135,12 +134,17 @@ public class IndexSchemaGuesser {
 				synchronized (this.getClass()) { /* TODO: think about better approach to make this transactional */
 
 					ImmutableOpenMap<String, ImmutableOpenMap<String, MappingMetaData>> mMap = m.getMappings();
-					if(mMap.containsKey(index)) {
+
+			        if(mMap.containsKey(index)) {
 						ImmutableOpenMap<String, MappingMetaData> map1 = mMap.get(index);
 						if(map1.get(type) != null) {
 							Map<String,Object> map = map1.get(type).getSourceAsMap();
 							Object schemaType = selectJsonPath(map, attributePath + ".type");
 							if(!"geo_point".equals(schemaType)) {
+								LOG.info("Updating schema of elasticsearch index/type '" + index + 
+										"/" + type +  "' attribute " + attributePath + 
+										" from type '" + schemaType + "' to 'geo_point'");
+
 								String tmpID = UUID.randomUUID().toString();
 								/* create temp index */
 								esUtil.createIndex(tmpID);
