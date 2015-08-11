@@ -16,7 +16,14 @@
 
 package org.springframework.xd.modules.sink.elasticsearch;
 
+import groovy.json.JsonBuilder;
+import groovy.json.internal.LazyMap;
+
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.index.IndexRequest;
@@ -87,32 +94,64 @@ public class ElasticSearchSinkMessageHandler extends AbstractMessageHandler {
 		this.guessSchemas = guessSchemas;
 	}
 
-    @Override
+    @SuppressWarnings("unchecked")
+	@Override
     protected void handleMessageInternal(Message<?> message) throws Exception {
-        // currently, accepting only Strings as payloads
-        if (message.getPayload() instanceof String) {
-            IndexRequest request;
-            if (idPath == null) {
-                request = new IndexRequest(index, type);
+        try {
+        	if (message.getPayload() instanceof List<?>) {
+            	processMessage((List<?>)message.getPayload());
+            } else {
+               processMessage(Arrays.asList(message.getPayload()));
             }
-            else {
-                Object extractedId = JsonPathUtils.evaluate(message.getPayload(), idPath);
-                if (!(extractedId instanceof Collection)) {
-                    request = new IndexRequest(index, type, extractedId.toString());
-                } else {
-                    throw new MessageHandlingException(message, "The id must be a single value");
-                }
+		} catch (Exception e) {
+			throw new MessageHandlingException(message, e);
+		}
+//        else if (message instanceof KafkaMessage) {
+//    		KafkaMessage kMsg = (KafkaMessage)message;
+//    		payload = kMsg.getMessage().payload().toString();
+//    	}
+
+    }
+
+    private void processMessage(List<?> messages) throws Exception {
+    	for(Object o : messages) {
+    		if (o instanceof String) {
+                processMessage((String)o);
+            } else if (o instanceof List<?>) {
+            	processMessage((List<?>)o);
+//            } else if (o instanceof LazyMap) {
+//            	LazyMap map = (LazyMap) o;
+//            	JsonBuilder builder = new JsonBuilder(map);
+//            	processMessage(builder.toString());
+            } else if (o instanceof Map<?,?>) {
+            	Map<?,?> map = (Map<?,?>) o;
+            	JsonBuilder builder = new JsonBuilder(map);
+            	processMessage(builder.toString());
+            } else {
+        		throw new RuntimeException("Cannot extract payload from message: " + o + (o == null ? "" : (" - " + o.getClass())));
             }
-            // TODO: make the charset configurable
-            request.source(((String)message.getPayload()).getBytes());
-            ActionFuture<IndexResponse> future = client.index(request);
-            /* wait until indexed, then re-calc the index*/
-            if(guessSchemas != null && "true".equals(guessSchemas)) {
-            	future.get();
-                checkIndexSchema(request);
+    	}
+    }
+    private void processMessage(String payload) throws Exception {
+
+        IndexRequest request;
+        if (idPath == null) {
+            request = new IndexRequest(index, type);
+        }
+        else {
+            Object extractedId = JsonPathUtils.evaluate(payload, idPath);
+            if (!(extractedId instanceof Collection)) {
+                request = new IndexRequest(index, type, extractedId.toString());
+            } else {
+                throw new RuntimeException("The id must be a single value");
             }
-        } else {
-            throw new MessageHandlingException(message, "Only String payloads are currently supported");
+        }
+        request.source(payload);
+        ActionFuture<IndexResponse> future = client.index(request);
+        /* wait until indexed, then (possibly) re-calc the index */
+        if(guessSchemas != null && "true".equals(guessSchemas)) {
+        	future.get();
+            checkIndexSchema(request);
         }
     }
 
