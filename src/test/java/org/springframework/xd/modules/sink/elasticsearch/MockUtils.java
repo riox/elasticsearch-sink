@@ -33,7 +33,8 @@ public class MockUtils {
 
     public static final String SOURCE_INPUT = "{'text':'#WorldCup is cool','id':'1'}";
 
-    public static Client mockingClientForIndexRequestsWithoutId() {
+    @SuppressWarnings("unchecked")
+	public static Client mockingClientForIndexRequestsWithoutId() {
         // the request will not include an id
         Client mock = Mockito.mock(Client.class);
         IndexRequest indexRequest = getIndexRequestWithoutId();
@@ -41,7 +42,8 @@ public class MockUtils {
         return mock;
     }
 
-    public static Client mockingClientForIndexRequestsWithId() {
+    @SuppressWarnings("unchecked")
+	public static Client mockingClientForIndexRequestsWithId() {
         // the request will not include an id
         Client mock = Mockito.mock(Client.class);
         IndexRequest indexRequest = getIndexRequestWithId();

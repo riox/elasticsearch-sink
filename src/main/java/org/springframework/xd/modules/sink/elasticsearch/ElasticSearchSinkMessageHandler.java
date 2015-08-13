@@ -17,11 +17,12 @@
 package org.springframework.xd.modules.sink.elasticsearch;
 
 import groovy.json.JsonBuilder;
-import groovy.json.internal.LazyMap;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -42,7 +43,7 @@ import org.springframework.messaging.MessageHandlingException;
 public class ElasticSearchSinkMessageHandler extends AbstractMessageHandler {
 
 
-    private volatile Client client;
+	private volatile Client client;
 
     private volatile String index;
 
@@ -52,6 +53,11 @@ public class ElasticSearchSinkMessageHandler extends AbstractMessageHandler {
 
     private volatile String guessSchemas;
 
+    private volatile String addTimestamp;
+
+    private static boolean OVERWRITE_TIMESTAMP = true;
+    private static final DateFormat DATE_FORMAT = new SimpleDateFormat("yyyyMMdd'T'HHmmssZ");
+	private static final String TIMESTAMP_KEY = "_timestamp";
     private IndexSchemaGuesser schemaGuesser;
 
     public void setClient(Client client) {
@@ -87,11 +93,19 @@ public class ElasticSearchSinkMessageHandler extends AbstractMessageHandler {
     }
     
     /**
-     * Whether or not to guess schemas.
-     * @param guessSchemas
+     * Whether or not to guess schemas (boolean true/false).
+     * @param guessSchemas true or false
      */
     public void setGuessSchemas(String guessSchemas) {
 		this.guessSchemas = guessSchemas;
+	}
+
+    /**
+     * Whether or not to add timestamps (boolean true/false).
+     * @param addTimestamp true or false
+     */
+    public void setAddTimestamp(String addTimestamp) {
+		this.addTimestamp = addTimestamp;
 	}
 
     @SuppressWarnings("unchecked")
@@ -106,11 +120,6 @@ public class ElasticSearchSinkMessageHandler extends AbstractMessageHandler {
 		} catch (Exception e) {
 			throw new MessageHandlingException(message, e);
 		}
-//        else if (message instanceof KafkaMessage) {
-//    		KafkaMessage kMsg = (KafkaMessage)message;
-//    		payload = kMsg.getMessage().payload().toString();
-//    	}
-
     }
 
     private void processMessage(List<?> messages) throws Exception {
@@ -119,10 +128,6 @@ public class ElasticSearchSinkMessageHandler extends AbstractMessageHandler {
                 processMessage((String)o);
             } else if (o instanceof List<?>) {
             	processMessage((List<?>)o);
-//            } else if (o instanceof LazyMap) {
-//            	LazyMap map = (LazyMap) o;
-//            	JsonBuilder builder = new JsonBuilder(map);
-//            	processMessage(builder.toString());
             } else if (o instanceof Map<?,?>) {
             	Map<?,?> map = (Map<?,?>) o;
             	JsonBuilder builder = new JsonBuilder(map);
@@ -132,6 +137,7 @@ public class ElasticSearchSinkMessageHandler extends AbstractMessageHandler {
             }
     	}
     }
+
     private void processMessage(String payload) throws Exception {
 
         IndexRequest request;
@@ -147,12 +153,31 @@ public class ElasticSearchSinkMessageHandler extends AbstractMessageHandler {
             }
         }
         request.source(payload);
+        /* add timestamps */
+        if(addTimestamp != null && "true".equals(addTimestamp)) {
+        	request = addTimestamp(request);
+        }
         ActionFuture<IndexResponse> future = client.index(request);
         /* wait until indexed, then (possibly) re-calc the index */
         if(guessSchemas != null && "true".equals(guessSchemas)) {
         	future.get();
             checkIndexSchema(request);
         }
+    }
+    
+    /**
+     * Add a timestamp to the given document.
+     * @return
+     */
+    private IndexRequest addTimestamp(IndexRequest req) {
+    	Map<String,Object> map = req.sourceAsMap();
+    	if(OVERWRITE_TIMESTAMP || !map.containsKey(TIMESTAMP_KEY)) {
+    		String time = DATE_FORMAT.format(new Date());
+    		map.put(TIMESTAMP_KEY, time);
+    		logger.debug("Adding timestamp to elasticsearch document: " + TIMESTAMP_KEY + "=" + time);
+    	}
+    	req.source(map);
+    	return req;
     }
 
     /**

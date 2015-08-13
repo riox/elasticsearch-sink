@@ -32,7 +32,8 @@ import org.junit.Test;
  */
 public class TestElasticSearchSinkOptionMetadata {
 
-    @Test
+    @SuppressWarnings({ "rawtypes" })
+	@Test
     public void testHttpModeActivation() throws Exception {
 
         ElasticSearchSinkOptionMetadata httpElasticSearchSinkOptionMetadata = new ElasticSearchSinkOptionMetadata();
@@ -46,7 +47,8 @@ public class TestElasticSearchSinkOptionMetadata {
 
     }
 
-    @Test
+    @SuppressWarnings("rawtypes")
+	@Test
     public void testTransportModeActivation() throws Exception {
 
         ElasticSearchSinkOptionMetadata transportElasticSearchSinkOptionMetadata = new ElasticSearchSinkOptionMetadata();
@@ -59,7 +61,8 @@ public class TestElasticSearchSinkOptionMetadata {
         Assert.assertThat(transportElasticSearchSinkOptionMetadata.groupsToValidate(), arrayWithSize(1));
     }
 
-    @Test
+    @SuppressWarnings("rawtypes")
+	@Test
     public void testNodeModeActivation() throws Exception {
 
         ElasticSearchSinkOptionMetadata nodeElasticSearchSinkOptionMetadata = new ElasticSearchSinkOptionMetadata();

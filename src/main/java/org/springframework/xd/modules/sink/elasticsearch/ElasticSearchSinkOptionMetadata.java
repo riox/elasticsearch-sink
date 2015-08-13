@@ -73,6 +73,8 @@ public class ElasticSearchSinkOptionMetadata implements ProfileNamesProvider,Val
 
     private volatile Boolean guessSchemas;
 
+    private volatile Boolean addTimestamp;
+
     @NotBlank(groups = HttpValidationGroup.class)
     public String getProtocol() {
         return protocol;
@@ -115,6 +117,14 @@ public class ElasticSearchSinkOptionMetadata implements ProfileNamesProvider,Val
     	return guessSchemas;
     }
 
+    public Boolean getAddTimestamp() {
+    	return addTimestamp;
+    }
+
+    public Boolean isAddTimestamp() {
+    	return addTimestamp;
+    }
+
     @ModuleOption("The ElasticSearch cluster")
     public void setClusterName(String clusterName) {
         this.clusterName = clusterName;
@@ -148,6 +158,11 @@ public class ElasticSearchSinkOptionMetadata implements ProfileNamesProvider,Val
     @ModuleOption("Whether to automatically guess schema types, e.g., geo_point")
     public void setGuessSchemas(Boolean guessSchemas) {
 		this.guessSchemas = guessSchemas;
+	}
+
+    @ModuleOption("Whether to add a 'timestamp' attribute to stored items")
+    public void setAddTimestamp(Boolean addTimestamp) {
+		this.addTimestamp = addTimestamp;
 	}
 
 
