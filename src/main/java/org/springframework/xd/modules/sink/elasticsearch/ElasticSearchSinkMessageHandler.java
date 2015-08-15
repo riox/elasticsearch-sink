@@ -57,7 +57,7 @@ public class ElasticSearchSinkMessageHandler extends AbstractMessageHandler {
 
     private static boolean OVERWRITE_TIMESTAMP = true;
     private static final DateFormat DATE_FORMAT = new SimpleDateFormat("yyyyMMdd'T'HHmmssZ");
-	private static final String TIMESTAMP_KEY = "_timestamp";
+	private static final String TIMESTAMP_KEY = "timestamp";
     private IndexSchemaGuesser schemaGuesser;
 
     public void setClient(Client client) {
